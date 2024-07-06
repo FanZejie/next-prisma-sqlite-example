@@ -287,8 +287,9 @@ const posts = await prisma.post.findMany({
     take: 1, //采用一个
     skip: 1 //跳过第一个
 })
-
+```
 ## 查询总数
+
 
 ```
 const total = await prisma.post.count({
@@ -297,3 +298,57 @@ const total = await prisma.post.count({
     }
 })
 ```
+# post
+
+写一个表单
+```
+ <form className="flex flex-col gap-y-2 items-center justify-center mt-8 w-full" onSubmit={()=>{
+                fetch("/api/post", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        title: event?.target.title.value,
+                        content: event?.target.content.value,
+                    }),
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                })
+            }}>
+                <input className="px-2 py-1 border border-black/10 rounded-md w-1/2" type="text" placeholder="Title" name="title"/> 
+                <textarea className="px-2 py-1 border border-black/10 rounded-md w-1/2" placeholder="Content" name="content" rows={5}/>
+                <button type="submit" className="px-2 py-1 border border-black/10 rounded-md">Create Post</button>
+</form>
+```
+但是我们不建议在这里去写
+
+创建一个/src/actions文件夹
+
+创建一个actios.ts文件
+
+```
+"use server";
+
+import prisma from "@/lib/db";
+
+export async function createPosts(formData: FormData) {
+    await prisma.post.create({
+        data: {
+            title: formData.get("title") as string,
+            slug:(formData.get("title") as string).replace(/\s+/g, "-").toLowerCase(),
+            content: formData.get("content") as string,
+        }
+    })
+}
+```
+
+在表单中调用这个函数  
+```
+<form className="flex flex-col gap-y-2 items-center justify-center mt-8 w-full" action={createPosts}>
+                <input className="px-2 py-1 border border-black/10 rounded-md w-1/2" type="text" placeholder="Title" name="title"/> 
+                <textarea className="px-2 py-1 border border-black/10 rounded-md w-1/2" placeholder="Content" name="content" rows={5}/>
+                <button type="submit" className="px-2 py-1 border border-black/10 rounded-md">Create Post</button>
+            </form>
+```  
+表单数据会被提交到/api/post
+
+数据通过表单项中的name来关联
