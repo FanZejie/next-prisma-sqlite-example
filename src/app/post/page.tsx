@@ -3,6 +3,12 @@ import prisma from "@/lib/db"
 import Link from "next/link"
 
 export default async function PostsPage() {
+    const user = await prisma.user.findUnique({
+        where: {
+            email: "fanzejiea@gmail.com"
+        }
+    })
+
     const posts = await prisma.post.findMany({
         select: {
             id: true,

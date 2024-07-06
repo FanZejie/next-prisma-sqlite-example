@@ -354,3 +354,164 @@ export async function createPosts(formData: FormData) {
 表单数据会被提交到/api/post
 
 数据通过表单项中的name来关联
+
+
+# relation
+
+## one to many
+
+```
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  hashedPassword String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  posts          Post[]
+}
+
+当我们写这个posts的时候会自动修改Post的model
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author      User?    @relation(fields: [authorId], references: [id])
+  authorId    String?
+
+  @@index(slug)
+}
+```
+
+## many to many
+
+```
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  hashedPassword String
+  posts          Post[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authors User[]
+
+  @@index(slug)
+}
+```
+
+## one to one
+
+```
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  hashedPassword String
+  posts          Post?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String   @unique
+
+  @@index(slug)
+}
+```
+
+# 关联查询 include & connect
+在我们查询时
+
+直接这样
+
+```
+const user = await prisma.user.findUnique({
+        where: {
+            email: "fanzejiea@gmail.com"
+        }
+    })
+```
+是不能user.posts.length去使用的
+
+要像这样去查询，就能正常获取到user.posts.length
+
+```
+const user = await prisma.user.findUnique({
+        where: {
+            email: "fanzejiea@gmail.com"
+        },
+        include: {
+            posts: true
+        }
+    })
+    console.log(user.posts.length)
+```
+
+当我们插入时也需要
+
+```
+export async function createPosts(formData: FormData) {
+    await prisma.post.create({
+        data: {
+            title: formData.get("title") as string,
+            slug:(formData.get("title") as string).replace(/\s+/g, "-").toLowerCase(),
+            content: formData.get("content") as string,
+            author: {
+                connect: {
+                    email: "fanzejiea@gmail.com"
+                }
+            }
+        }
+    });
+
+    revalidatePath("/posts");
+}
+```
+
+
+# seed database
+参考这个
+
+https://www.prisma.io/docs/orm/prisma-migrate/workflows/seeding#seeding-your-database-with-typescript-or-javascript
+
+在prisma下新建seed.ts,内容见文件
+
+将这段代码贴进package.json
+```
+"prisma": {
+  "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+},
+```
+
+然后需要确保ts-node环境
+
+```
+npm i ts-node -D
+```
+
+然后运行
+```
+npx prisma db seed
+```
+
