@@ -338,6 +338,8 @@ export async function createPosts(formData: FormData) {
             content: formData.get("content") as string,
         }
     })
+
+    revalidatePath("/posts"); //添加这个可以让页面发起请求后重新加载
 }
 ```
 
