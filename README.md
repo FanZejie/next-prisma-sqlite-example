@@ -40,7 +40,6 @@ npx prisma studio
 ```
 
 切到http://localhost:5555就是管理界面了
-![](Next%20&%20Prisma.assets/image-20240705174739658.png)
 
 写一个post界面
 
@@ -111,7 +110,7 @@ export default async function PostsPage() {
 ```
 此时访问http://localhost:3000/post
 就能看到我们的文章列表了
-![](Next%20&%20Prisma.assets/image-20240705175638500.png)
+
 
 
 接下来新建@/app/posts/[id]/page.tsx
@@ -133,7 +132,7 @@ export default async function PostPage({params}) {
     )
 }
 ```
-可以查询单条
+## 修改schema.prisma
 
 这里涉及到一个知识点，如果想更新schema该怎么办
 比如我这会要修改id为 cuid，然后添加一列，用来当url标题
@@ -154,8 +153,147 @@ model Post {
 ```
 npx prisma db push
 ```
-![](Next%20&%20Prisma.assets/image-20240705182253832.png)
+
 输入两次y，就是确定会删掉数据库里原来的数
 要是没变化就关停studio重启下
 
+## 查询单条数据
 
+findUnique()需要保证where条件唯一，否则会报错
+```tsx
+import prisma from "@/lib/db"
+export default async function PostPage({params}) {
+
+    const post = await prisma.post.findUnique({
+        where:{
+            id: params.id
+        }
+    })
+    return(
+        <main className=" flex flex-col items-center gap-y-5 pt-24 text-center">
+            <h1 className="text-3xl font-semibold">{post?.title}</h1>
+            <p className="text-lg">{post?.content}</p>
+        </main>
+    )
+}
+```
+如果我们想使用slug作为params查询，就要修改表结构
+```
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String?
+  published Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+```
+同时修改监听的参数，也就是[id] => [slug]
+
+```
+import prisma from "@/lib/db"
+export default async function PostPage({params}) {
+
+    const post = await prisma.post.findUnique({
+        where:{
+            slug: params.slug
+        }
+    })
+    return(
+        <main className=" flex flex-col items-center text-center  pt-24">
+            <h1 className="text-3xl font-semibold">{post?.title}</h1>
+            <p className="text-lg">{post?.content}</p>
+        </main>
+    )
+}
+```
+如果报错可以重启下dev
+
+## 添加索引
+
+如果我们想给某个字段加索引以让根据这个字段进行搜索的查询变的更快，我们需要
+
+```
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String?
+  published Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  @@index(slug)
+}
+
+```
+
+## 重命名
+
+```
+createdAt DateTime @default(now()) @map("created_at")
+``` 
+
+## 条件查询多条
+
+```
+const posts = await prisma.post.findMany({
+    where:{
+        published: true
+    }
+})
+```
+## 查询排序
+
+```
+const posts = await prisma.post.findMany({
+    where:{
+        published: true
+    },
+    orderBy:{
+        createdAt: "desc"
+    }
+})
+
+```
+
+## 只查询某些字段
+
+```
+const posts = await prisma.post.findMany({
+    where:{
+        published: true
+    },
+    select:{
+        title: true,
+        slug: true,
+        content: true
+    }
+})
+```
+
+## 查询分页
+
+```
+const posts = await prisma.post.findMany({
+    where:{
+        published: true
+    },
+    select:{
+        title: true,
+        slug: true,
+        content: true
+    },
+    take: 1, //采用一个
+    skip: 1 //跳过第一个
+})
+
+## 查询总数
+
+```
+const total = await prisma.post.count({
+    where:{
+        published: true
+    }
+})
+```
